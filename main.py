@@ -268,7 +268,7 @@ def run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, METHOD_TYPE):
             total_cost += robotic_arm_cost(x_t, u_t)  # Scaled cost
         elif SYSTEM_TYPE == 'linear':
             x_t = linear_dynamics(x_t, u_t, phi_true_history[t])
-            total_cost += quadratic_cost(x_t, u_t)  # Scaled cost
+            total_cost += quadratic_cost(x_t, u_t) / N # Scaled cost
         x_history.append(x_t)
 
     return total_cost, x_history, u_history, lambda_history, phi_pred_history, phi_true_history
