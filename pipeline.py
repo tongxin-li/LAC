@@ -112,9 +112,9 @@ total_cost['1-mpc'] = []
 total_cost['0-mpc'] = []
 total_cost['self-tuning'] = []
 
-for Noise_mu in range(1, 10, 1):
+for Noise_mu in range(1, 30, 1):
     # Noise_mu = Noise_mu/3
-    Noise_mu = Noise_mu/10
+    Noise_mu = Noise_mu/30
     total_cost_lac, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, 'lac')
     total_cost_1mpc, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, '1-mpc')
     total_cost_0mpc, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, '0-mpc')

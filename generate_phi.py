@@ -1,11 +1,11 @@
 import numpy as np
-from fbm import FBM
+# from fbm import FBM
 import math
 from _PARAMETERS import *
 
 def tracking_coordinates(t):
-    y_1 = 2 * math.cos(t/38.2) + math.cos(5 * t/38.2)
-    y_2 = 2 * math.sin(t/38.2) + math.sin(5 * t/38.2)
+    y_1 = 2 * math.cos(t/8.2) + math.cos(5 * t/8.2)
+    y_2 = 2 * math.sin(t/8.2) + math.sin(5 * t/8.2)
     return y_1, y_2
 
 def generate_phi(T = 100, N = 100, SYSTEM_TYPE = 'linear'):
@@ -44,28 +44,28 @@ def generate_phi(T = 100, N = 100, SYSTEM_TYPE = 'linear'):
             # Ground-true predictions
             phi_t[t] = A @ np.array([y_1, y_2, 0, 0]) - np.array([y_3, y_4, 0, 0])
 
-        omega = 10.0  # High frequency for rapid oscillation
-        amplitude = 1.0  # Amplitude of the oscillation
-        noise_level = 0.5  # Magnitude of random noise
-
-        # Initialize phi_t array
-        phi_t = np.zeros((T + N, 4))
-
-        # Generate phi_t with rapid variations
-        for t in range(T + N):
-            # Time variable for oscillation
-            time = t * 0.1  # Adjust time step if needed
-            # High-frequency sine wave for each component (slightly different phases)
-            sine_components = amplitude * np.array([
-                np.sin(omega * time),
-                np.sin(omega * time + 0.5),  # Phase shift for variety
-                np.sin(omega * time + 1.0),
-                np.sin(omega * time + 1.5)
-            ])
-            # Random noise for each component
-            noise = noise_level * np.random.randn(4)
-            # Combine oscillation and noise
-            phi_t[t] = sine_components + noise
+        # omega = 10.0  # High frequency for rapid oscillation
+        # amplitude = 1.0  # Amplitude of the oscillation
+        # noise_level = 0.5  # Magnitude of random noise
+        #
+        # # Initialize phi_t array
+        # phi_t = np.zeros((T + N, 4))
+        #
+        # # Generate phi_t with rapid variations
+        # for t in range(T + N):
+        #     # Time variable for oscillation
+        #     time = t * 0.1  # Adjust time step if needed
+        #     # High-frequency sine wave for each component (slightly different phases)
+        #     sine_components = amplitude * np.array([
+        #         np.sin(omega * time),
+        #         np.sin(omega * time + 0.5),  # Phase shift for variety
+        #         np.sin(omega * time + 1.0),
+        #         np.sin(omega * time + 1.5)
+        #     ])
+        #     # Random noise for each component
+        #     noise = noise_level * np.random.randn(4)
+        #     # Combine oscillation and noise
+        #     phi_t[t] = sine_components + noise
 
 
     # # Parameters
@@ -90,4 +90,4 @@ def generate_phi(T = 100, N = 100, SYSTEM_TYPE = 'linear'):
     # t_values = np.arange(T + N)
     # phi_true_history = Amp * np.sin(omega * t_values) + np.random.normal(0, sigma_epsilon, T + N)
 
-    return 5 * phi_t
+    return phi_t
