@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 # System parameters
 SYSTEM_TYPE = 'linear'  # Options: 'chaotic_map' or 'robotic_arm' or 'linear'
-sigma_eta = 0.1  # N
-
+sigma_eta = 0.5
+noise_mu = 0
 total_cost = {}
 
 x_history = {}
@@ -12,52 +12,57 @@ u_history = {}
 lambda_history = {}
 phi_pred_history = {}
 phi_true_history = {}
-
-
-def plot_control_costs(costs_method1, costs_method2, costs_method3, time_steps):
-    """
-    Plots instantaneous costs for three control methods over time.
-
-    Parameters:
-    - costs_method1: Array or list of costs for Method 1 over time.
-    - costs_method2: Array or list of costs for Method 2 over time.
-    - costs_method3: Array or list of costs for Method 3 over time.
-    - time_steps: Array or list of time steps (e.g., np.arange(T)).
-
-    The function generates a plot of instantaneous costs for each method over time.
-    Total costs are displayed in the legend for each method.
-    """
-    # Convert inputs to numpy arrays for consistency
-    costs_method1 = np.array(costs_method1)
-    costs_method2 = np.array(costs_method2)
-    costs_method3 = np.array(costs_method3)
-    time_steps = np.array(time_steps)
-
-    # Check that all cost arrays have the same length as time_steps
-    if not (len(costs_method1) == len(costs_method2) == len(costs_method3) == len(time_steps)):
-        raise ValueError("All cost arrays and time_steps must have the same length.")
-
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=(10, 10))
-
-    # Plot each method's costs with distinct styles
-    ax.plot(time_steps, costs_method1, label=f'Method 1', color='blue', linestyle='-')
-    ax.plot(time_steps, costs_method2, label=f'Method 2', color='green', linestyle='--')
-    ax.plot(time_steps, costs_method3, label=f'Method 3', color='red', linestyle='-.')
-
-    # Set title, labels, legend, and grid
-    ax.set_title('Comparison of Control Method Costs Over Time')
-    ax.set_xlabel('Time Step')
-    ax.set_ylabel('Cost')
-    ax.legend(loc='upper right')
-    ax.grid(True)
-    # plt.ylim((0.35, 0.5))
-
-    # Adjust layout and display the plot
-    plt.tight_layout()
-    plt.savefig('results', bbox_inches='tight')
-    plt.show()
-
+#
+#
+# def plot_control_costs(costs_method1, costs_method2, costs_method3, time_steps):
+#     """
+#     Plots instantaneous costs for three control methods over time.
+#
+#     Parameters:
+#     - costs_method1: Array or list of costs for Method 1 over time.
+#     - costs_method2: Array or list of costs for Method 2 over time.
+#     - costs_method3: Array or list of costs for Method 3 over time.
+#     - time_steps: Array or list of time steps (e.g., np.arange(T)).
+#
+#     The function generates a plot of instantaneous costs for each method over time.
+#     Total costs are displayed in the legend for each method.
+#     """
+#     # Convert inputs to numpy arrays for consistency
+#     costs_mean1 = np.array(np.mean(costs_method1, axis=1))
+#     std_dev1 = np.std(costs_method1, axis=1)
+#     costs_mean2 = np.array(np.mean(costs_method2, axis=1))
+#     std_dev2 = np.std(costs_method2, axis=1)
+#     costs_mean3 = np.array(np.mean(costs_method3, axis=1))
+#     std_dev3 = np.std(costs_method3, axis=1)
+#     time_steps = np.array(np.mean(time_steps))
+#
+#     # Check that all cost arrays have the same length as time_steps
+#     if not (len(costs_method1) == len(costs_method2) == len(costs_method3) == len(time_steps)):
+#         raise ValueError("All cost arrays and time_steps must have the same length.")
+#
+#     # Create figure and axis
+#     fig, ax = plt.subplots(figsize=(10, 10))
+#
+#     # Plot each method's costs with distinct styles
+#     ax.plot(time_steps, costs_method1, label=f'Method 1', color='blue', linestyle='-')
+#     plt.fill_between(range(len(time_steps)), costs_mean1 - std_dev1/2, costs_mean1 + std_dev1/2, alpha=0.3)
+#     ax.plot(time_steps, costs_method2, label=f'Method 2', color='green', linestyle='--')
+#     plt.fill_between(range(len(time_steps)), costs_mean2 - std_dev2/2, costs_mean2 + std_dev2/2, alpha=0.3)
+#     ax.plot(time_steps, costs_method3, label=f'Method 3', color='red', linestyle='-.')
+#     plt.fill_between(range(len(time_steps)), costs_mean3 - std_dev3/2, costs_mean3 + std_dev3/2, alpha=0.3)
+#
+#     # Set title, labels, legend, and grid
+#     ax.set_title('Comparison of Control Method Costs Over Time')
+#     ax.set_xlabel('Time Step')
+#     ax.set_ylabel('Cost')
+#     ax.legend(loc='upper right')
+#     ax.grid(True)
+#     # plt.ylim((0.35, 0.5))
+#
+#     # Adjust layout and display the plot
+#     plt.tight_layout()
+#     plt.savefig('results', bbox_inches='tight')
+#     plt.show()
 
 
 def plot_control_costs(costs_method1, costs_method2, costs_method3, costs_method4, time_steps):
@@ -74,51 +79,64 @@ def plot_control_costs(costs_method1, costs_method2, costs_method3, costs_method
     The function generates a plot of instantaneous costs for each method over time.
     Total costs are displayed in the legend for each method.
     """
+
+    plt.rcParams.update({'font.size': 22})
+    plt.rcParams['axes.linewidth'] = 2  # set the value globally
+
     # Convert inputs to numpy arrays for consistency
-    costs_method1 = np.array(costs_method1)
-    costs_method2 = np.array(costs_method2)
-    costs_method3 = np.array(costs_method3)
-    costs_method4 = np.array(costs_method4)
-    time_steps = np.array(time_steps)
+    costs_mean1 = np.array(np.mean(costs_method1, axis=1))
+    std_dev1 = np.std(costs_method1, axis=1)
+    costs_mean2 = np.array(np.mean(costs_method2, axis=1))
+    std_dev2 = np.std(costs_method2, axis=1)
+    costs_mean3 = np.array(np.mean(costs_method3, axis=1))
+    std_dev3 = np.std(costs_method3, axis=1)
+    costs_mean4 = np.array(np.mean(costs_method4, axis=1))
+    std_dev4 = np.std(costs_method4, axis=1)
+    # time_steps = np.array(np.mean(time_steps))
 
     # Check that all cost arrays have the same length as time_steps
-    if not (len(costs_method1) == len(costs_method2) == len(costs_method3) == len(costs_method4) == len(time_steps)):
+    if not (len(costs_mean1) == len(costs_mean2) == len(costs_mean3) == len(costs_mean4) == len(time_steps)):
         raise ValueError("All cost arrays and time_steps must have the same length.")
 
     # Create figure and axis
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     # Plot each method's costs with distinct styles
-    ax.plot(time_steps, costs_method1, label=f'Method 1', color='blue', linestyle='-')
-    ax.plot(time_steps, costs_method2, label=f'Method 2', color='green', linestyle='--')
-    ax.plot(time_steps, costs_method3, label=f'Method 3', color='red', linestyle='-.')
-    ax.plot(time_steps, costs_method4, label=f'Method 4', color='black', linestyle='-')
+    ax.plot(time_steps, costs_mean1, label=f'LAC', color='blue', linestyle='-', linewidth=2)
+    plt.fill_between(range(len(time_steps)), costs_mean1 - std_dev1/2, costs_mean1 + std_dev1/2, alpha=0.4)
+    ax.plot(time_steps, costs_mean2, label=f'MPC', color='green', linestyle='--', linewidth=2)
+    plt.fill_between(range(len(time_steps)), costs_mean2 - std_dev2/2, costs_mean2 + std_dev2/2, alpha=0.4)
+    ax.plot(time_steps, costs_mean3, label=f'LQR', color='red', linestyle='-.', linewidth=3)
+    plt.fill_between(range(len(time_steps)), costs_mean3 - std_dev3/2, costs_mean3 + std_dev3/2, alpha=0.4)
+    ax.plot(time_steps, costs_mean4, label=f'Self-Tuning', color='black', linestyle='-', linewidth=2)
+    plt.fill_between(range(len(time_steps)), costs_mean4 - std_dev4/2, costs_mean4 + std_dev4/2, alpha=0.4)
 
     # Set title, labels, legend, and grid
-    ax.set_title('Comparison of Control Method Costs Over Time')
-    ax.set_xlabel('Time Step')
+    # ax.set_title('Comparison of Control Method Costs Over Time')
+    ax.set_xlabel('Prediction Error')
     ax.set_ylabel('Cost')
     ax.legend(loc='upper right')
     ax.grid(True)
-    # plt.ylim((0.35, 0.5))
+    plt.ylim((110, 200))
 
     # Adjust layout and display the plot
     plt.tight_layout()
-    plt.savefig('results', bbox_inches='tight')
+    plt.savefig('linear', bbox_inches='tight')
     plt.show()
+
 
 total_cost['lac'] = []
 total_cost['1-mpc'] = []
 total_cost['0-mpc'] = []
 total_cost['self-tuning'] = []
 
-for Noise_mu in range(1, 30, 1):
-    # Noise_mu = Noise_mu/3
-    Noise_mu = Noise_mu/30
-    total_cost_lac, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, 'lac')
-    total_cost_1mpc, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, '1-mpc')
-    total_cost_0mpc, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, '0-mpc')
-    total_cost_st, x_history[Noise_mu], u_history[Noise_mu], lambda_history[Noise_mu], phi_pred_history[Noise_mu], phi_true_history[Noise_mu] = run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, 'self-tuning')
+for mu in range(1, 50, 1):
+    # noise_mu = mu/3
+    noise_mu = mu/10
+    total_cost_lac, x_history[noise_mu], u_history[noise_mu], lambda_history[noise_mu], phi_pred_history[noise_mu], phi_true_history[noise_mu] = run_dynamics(noise_mu, sigma_eta, SYSTEM_TYPE, 'lac', 5)
+    total_cost_1mpc, x_history[noise_mu], u_history[noise_mu], lambda_history[noise_mu], phi_pred_history[noise_mu], phi_true_history[noise_mu] = run_dynamics(noise_mu, sigma_eta, SYSTEM_TYPE, '1-mpc', 5)
+    total_cost_0mpc, x_history[noise_mu], u_history[noise_mu], lambda_history[noise_mu], phi_pred_history[noise_mu], phi_true_history[noise_mu] = run_dynamics(noise_mu, sigma_eta, SYSTEM_TYPE, '0-mpc', 5)
+    total_cost_st, x_history[noise_mu], u_history[noise_mu], lambda_history[noise_mu], phi_pred_history[noise_mu], phi_true_history[noise_mu] = run_dynamics(noise_mu, sigma_eta, SYSTEM_TYPE, 'self-tuning', 5)
     total_cost['lac'].append(total_cost_lac)
     total_cost['1-mpc'].append(total_cost_1mpc)
     total_cost['0-mpc'].append(total_cost_0mpc)

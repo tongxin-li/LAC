@@ -4,8 +4,8 @@ import math
 from _PARAMETERS import *
 
 def tracking_coordinates(t):
-    y_1 = 2 * math.cos(t/8.2) + math.cos(5 * t/8.2)
-    y_2 = 2 * math.sin(t/8.2) + math.sin(5 * t/8.2)
+    y_1 = 1/2 * math.cos(t/8.2) + math.cos(5 * t/8.2)
+    y_2 = 1/2 * math.sin(t/8.2) + math.sin(5 * t/8.2)
     return y_1, y_2
 
 def generate_phi(T = 100, N = 100, SYSTEM_TYPE = 'linear'):

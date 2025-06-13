@@ -6,12 +6,11 @@ from self_tuning import *
 from _PARAMETERS import *
 
 # Common parameters
-learning_rate = 0.05  # Learning rate
+learning_rate = 0.01  # Learning rate
 u_max = 5.0  # Control bound
-T = 1000
+T = 200
 N = 5  # Prediction horizon
 k = 5  # Delay for DCL
-
 
 
 # Dynamics functions
@@ -21,11 +20,13 @@ def chaotic_map_dynamics(x, u, phi):
     b = 0.1
     return a * x * (1 - x) + b * u + phi * np.sin(x)
 
+
 def robotic_arm_dynamics(x, u, phi):
     """Robotic arm angle dynamics."""
     alpha = 0.5
     beta = 0.2
     return x + alpha * np.sin(x) + beta * u * np.exp(-np.abs(x)) + phi * x**3
+
 
 # Cost functions
 def chaotic_map_cost(x, u):
@@ -34,22 +35,44 @@ def chaotic_map_cost(x, u):
     x_star = (a - 1) / a  # Fixed point ~ 0.7368
     return (x - x_star)**2 + mu * u**2
 
+
 def robotic_arm_cost(x, u):
     """Cost for robotic arm: penalize deviation and torque."""
 
     gamma = 0.1
     return x**2 + gamma * u**2
 
+
 def linear_dynamics(x, u, phi):
     """Linear dynamics."""
     return A @ x + B @ u + phi
+
 
 def quadratic_cost(x, u):
     """Cost for robotic arm: penalize deviation and torque."""
     return x.T @ Q @ x + u.T @ R @ u
 
 
+def sample_on_sphere(noise_mu, sigma, k):
+    """
+    Uniformly sample a 4-dimensional vector with fixed L2-norm L.
 
+    Parameters:
+    - L: The desired L2-norm (radius of the sphere).
+
+    Returns:
+    - A 4-dimensional vector with L2-norm L, uniformly sampled on the sphere.
+    """
+    # Generate a 4-dimensional vector from standard normal distribution
+    # X = np.random.randn(k)
+    X = np.random.normal(0, sigma, k)
+    # Compute the L2-norm of X
+    norm_X = np.linalg.norm(X)
+
+    # Normalize X and scale to the desired norm L
+    Y = noise_mu * (X / norm_X)
+    # print(np.linalg.norm(Y))
+    return Y
 
 
 # MPC solver
@@ -75,6 +98,7 @@ def quadratic_cost(x, u):
 #     res = minimize(cost, U0, bounds=bounds, method='trust-constr')
 #     return res.x[0]  # First control action
 
+
 def mpc_solve(x_t, phi_seq, N, system_type):
     def cost(U):
         x = x_t
@@ -82,7 +106,7 @@ def mpc_solve(x_t, phi_seq, N, system_type):
         for k in range(N):
             u = U[k]
             if system_type == 'chaotic_map':
-                __total_cost +=  chaotic_map_cost(x, u) / N  # Scaled cost
+                __total_cost += chaotic_map_cost(x, u) / N  # Scaled cost
                 x = np.clip(chaotic_map_dynamics(x, u, phi_seq[k]), -10, 10)
                 # print("x is:" + str(x))
                 # print("u is:" + str(u))
@@ -90,6 +114,7 @@ def mpc_solve(x_t, phi_seq, N, system_type):
                 __total_cost += robotic_arm_cost(x, u) / N
                 x = np.clip(robotic_arm_dynamics(x, u, phi_seq[k]), -10 * np.pi, 10 * np.pi)
         return __total_cost
+
 
     def LQR_cost(U):
         # Reshape U to (N, 2) since u is in R^2
@@ -130,6 +155,7 @@ def mpc_solve(x_t, phi_seq, N, system_type):
 
 # DCL algorithm
 
+
 def dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate):
     """
     Delayed Confidence Learning update based on step-wise prediction errors.
@@ -159,6 +185,7 @@ def dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate):
     # ξ = Σ [λ² ε² + (1 - λ)² ε̅²]
     # ∂ξ/∂λ = Σ [2λ ε² - 2(1 - λ) ε̅²]
     grad = np.sum(2 * lambda_prev * eps ** 2 - 2 * (1 - lambda_prev) * eps_bar ** 2)
+    # grad = np.sum(eps - eps_bar)
 
     # Update lambda using gradient descent
     lambda_new = lambda_prev - learning_rate * grad
@@ -166,109 +193,126 @@ def dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate):
     # Project lambda onto [0, 1]
     return np.clip(lambda_new, 0, 1)
 
-def run_dynamics(Noise_mu, sigma_eta, SYSTEM_TYPE, METHOD_TYPE):
+
+def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
+
+    all_total_cost = []
+    all_x_history = {}
+    all_u_history = {}
+    all_lambda_history = {}
+    all_phi_pred_history = {}
+    all_phi_true_history = {}
 
     # Simulation
 
-    if SYSTEM_TYPE == 'linear':
-        x_t = np.zeros(4)
-    else:
-        x_t = 0.5  # Initial state
-    x_history = [x_t]
-
-    u_history = []
-    lambda_history = []
-
-    # Histories for DCL
-    lambda_values = [0.5] * k  # Initialize lambda for t < k
-    np.random.seed(42)  # For reproducibility
-
-    # Histories for STC
-
-    eta_true_past = []
-    eta_pred_past = []
-
-    # Generate true phi_t
-    phi_true_history = generate_phi(T, N, SYSTEM_TYPE)
-
-    # Store predictions and lambda
-    phi_pred_history = []
-    total_cost = 0
-
-    for t in range(T):
-
-        print("time is " + str(t))
-
-        # Generate predictions with noise
-        phi_pred = []
-        for i in range(phi_true_history.shape[1]):
-            phi_pred.append(phi_true_history[t: t+k][:, i] + np.random.normal(Noise_mu, sigma_eta, k))
+    for num in range(number_tests):
 
         if SYSTEM_TYPE == 'linear':
-            phi_pred = np.array(phi_pred).T
-
-        phi_pred_history.append(phi_pred)
-
-        # Nominal values
-
-        if SYSTEM_TYPE == 'linear':
-            kappa = np.zeros((N, 4))
+            x_t = np.zeros(4)
         else:
-            kappa = np.zeros(N)
+            x_t = 0.5  # Initial state
+        x_history = [x_t]
 
-        # MPC solutions
-        u_phi = mpc_solve(x_t, phi_pred[:N], N, SYSTEM_TYPE)
-        u_kappa = mpc_solve(x_t, kappa[:N], N, SYSTEM_TYPE)
+        u_history = []
+        lambda_history = []
 
-        # Control action
-        if METHOD_TYPE == 'lac':
+        # Histories for DCL
+        lambda_values = [0.5] * k  # Initialize lambda for t < k
+        np.random.seed(num)  # For reproducibility
 
-            # Confidence learning
-            if t <= k:
-                lambda_t = 0.5
+        # Histories for STC
+
+        eta_true_past = []
+        eta_pred_past = []
+
+        # Generate true phi_t
+        phi_true_history = generate_phi(T, N, SYSTEM_TYPE)
+
+        # Store predictions and lambda
+        phi_pred_history = []
+        total_cost = 0
+
+        for t in range(T):
+
+            print("time is " + str(t))
+
+            # Generate predictions with noise
+            phi_pred = []
+            for i in range(phi_true_history.shape[1]):
+                phi_pred.append(phi_true_history[t: t+k][:, i] + sample_on_sphere(noise_mu, sigma, k))
+
+            if SYSTEM_TYPE == 'linear':
+                phi_pred = np.array(phi_pred).T
+
+            phi_pred_history.append(phi_pred)
+
+            # Nominal values
+
+            if SYSTEM_TYPE == 'linear':
+                kappa = np.zeros((N, 4))
             else:
-                # Get past data for DCL
-                idx = t - k
-                phi_true_past = np.array(phi_true_history[idx:t])
-                phi_pred_past = np.array(phi_pred_history[idx][0:len(phi_true_past)])
-                if SYSTEM_TYPE == 'linear':
-                    kappa_past = np.zeros((len(phi_true_past), 4))
+                kappa = np.zeros(N)
+
+            # MPC solutions
+            u_phi = mpc_solve(x_t, phi_pred[:N], N, SYSTEM_TYPE)
+            u_kappa = mpc_solve(x_t, kappa[:N], N, SYSTEM_TYPE)
+
+            # Control action
+            if METHOD_TYPE == 'lac':
+
+                # Confidence learning
+                if t <= k:
+                    lambda_t = 0.5
                 else:
-                    kappa_past = np.zeros(len(phi_true_past))
-                lambda_prev = lambda_values[-k]
-                lambda_t = dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate)
-            u_t = lambda_t * u_phi + (1 - lambda_t) * u_kappa
-            lambda_values.append(lambda_t)
-            lambda_history.append(lambda_t)
+                    # Get past data for DCL
+                    idx = t - k
+                    phi_true_past = np.array(phi_true_history[idx:t])
+                    phi_pred_past = np.array(phi_pred_history[idx][0:len(phi_true_past)])
+                    if SYSTEM_TYPE == 'linear':
+                        kappa_past = np.zeros((len(phi_true_past), 4))
+                    else:
+                        kappa_past = np.zeros(len(phi_true_past))
+                    lambda_prev = lambda_values[-k]
+                    lambda_t = dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate)
+                u_t = lambda_t * u_phi + (1 - lambda_t) * u_kappa
+                lambda_values.append(lambda_t)
+                lambda_history.append(lambda_t)
 
-        elif METHOD_TYPE == 'self-tuning' and SYSTEM_TYPE == 'linear':
-            phi_true_past = np.array(phi_true_history[t])
-            phi_pred_past = []
-            if t > 0:
-                for i in range(min(t, N)):
-                    phi_pred_past.append(phi_pred_history[t - i - 1][i])
-            phi_pred_past = np.array(phi_pred_past)
-            lambda_t, eta_true_past, eta_pred_past = self_tuning_ftl(N, t, phi_true_past, phi_pred_past, P, F, H, eta_true_past, eta_pred_past)
-            u_t = lambda_t * u_phi + (1 - lambda_t) * u_kappa
-            lambda_history.append(lambda_t)
+            elif METHOD_TYPE == 'self-tuning' and SYSTEM_TYPE == 'linear':
+                phi_true_past = np.array(phi_true_history[t])
+                phi_pred_past = []
+                if t > 0:
+                    for i in range(min(t, N)):
+                        phi_pred_past.append(phi_pred_history[t - i - 1][i])
+                phi_pred_past = np.array(phi_pred_past)
+                lambda_t, eta_true_past, eta_pred_past = self_tuning_ftl(N, t, phi_true_past, phi_pred_past, P, F, H, eta_true_past, eta_pred_past)
+                u_t = lambda_t * u_phi + (1 - lambda_t) * u_kappa
+                lambda_history.append(lambda_t)
 
-        elif METHOD_TYPE == '1-mpc':
-            u_t = u_phi
-        elif METHOD_TYPE == '0-mpc':
-            u_t = u_kappa
+            elif METHOD_TYPE == '1-mpc':
+                u_t = u_phi
+            elif METHOD_TYPE == '0-mpc':
+                u_t = u_kappa
 
-        u_history.append(u_t)
+            u_history.append(u_t)
 
-        # Update state
-        if SYSTEM_TYPE == 'chaotic_map':
-            x_t = chaotic_map_dynamics(x_t, u_t, phi_true_history[t])
-            total_cost += chaotic_map_cost(x_t, u_t)  # Scaled cost
-        elif SYSTEM_TYPE == 'robotic_arm':
-            x_t = robotic_arm_dynamics(x_t, u_t, phi_true_history[t])
-            total_cost += robotic_arm_cost(x_t, u_t)  # Scaled cost
-        elif SYSTEM_TYPE == 'linear':
-            x_t = linear_dynamics(x_t, u_t, phi_true_history[t])
-            total_cost += quadratic_cost(x_t, u_t) / N # Scaled cost
-        x_history.append(x_t)
+            # Update state
+            if SYSTEM_TYPE == 'chaotic_map':
+                x_t = chaotic_map_dynamics(x_t, u_t, phi_true_history[t])
+                total_cost += chaotic_map_cost(x_t, u_t)  # Scaled cost
+            elif SYSTEM_TYPE == 'robotic_arm':
+                x_t = robotic_arm_dynamics(x_t, u_t, phi_true_history[t])
+                total_cost += robotic_arm_cost(x_t, u_t)  # Scaled cost
+            elif SYSTEM_TYPE == 'linear':
+                x_t = linear_dynamics(x_t, u_t, phi_true_history[t])
+                total_cost += quadratic_cost(x_t, u_t) / N # Scaled cost
+            x_history.append(x_t)
 
-    return total_cost, x_history, u_history, lambda_history, phi_pred_history, phi_true_history
+        all_total_cost.append(total_cost)
+        all_x_history[num] = x_history
+        all_u_history[num] = u_history
+        all_lambda_history[num] = lambda_history
+        all_phi_pred_history[num] = phi_pred_history
+        all_phi_true_history[num] = phi_true_history
+
+    return all_total_cost, all_x_history, all_u_history, all_lambda_history, all_phi_pred_history, all_phi_true_history
