@@ -47,7 +47,7 @@ python pipeline.py
 
 **Output**: `robotic_arm_results.png` - Publication-ready figure with 4 subplots
 
-![Robotic Arm Analysis](robotic_arm_results.pdf)
+![Robotic Arm Analysis](robotic_arm_results.png)
 
 **Usage**:
 ```bash
