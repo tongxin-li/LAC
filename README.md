@@ -29,6 +29,8 @@ The framework supports multiple system types:
 
 **Output**: `linear.png` - Shows how control costs vary with prediction uncertainty
 
+![Robustness Analysis](linear.png)
+
 **Usage**:
 ```bash
 python pipeline.py
@@ -43,7 +45,9 @@ python pipeline.py
 - 2x2 subplot layout showing state, control, cost, and confidence
 - Attack region highlighting and statistical analysis
 
-**Output**: `robotic_arm_results_2col_fancy.pdf` - Publication-ready figure with 4 subplots
+**Output**: `robotic_arm_results.pdf` - Publication-ready figure with 4 subplots
+
+![Robotic Arm Analysis](robotic_arm_results.pdf)
 
 **Usage**:
 ```bash
@@ -62,6 +66,8 @@ python run_robotic_arms_seaborn.py
 **Outputs**:
 - `perturbation_attack_results.png` - Main 3-panel analysis
 - `tracking_trajectory_comparison_attack_and_after.png` - Trajectory comparison
+
+![Linear System Attack Analysis](perturbation_attack_results.png)
 
 **Usage**:
 ```bash
@@ -156,6 +162,20 @@ Edit `_PARAMETERS.py` to modify:
 - Attack parameters
 - Control bounds
 - Learning rates
+
+## Generated Figures
+
+### 1. Robustness Analysis (`pipeline.py`)
+![Robustness Analysis](linear.png)
+*Control costs vs. prediction error for different noise levels. LAC maintains the lowest cost across all noise levels, demonstrating superior robustness to prediction uncertainty.*
+
+### 2. Robotic Arm Analysis (`run_robotic_arms_seaborn.py`)
+![Robotic Arm Analysis](robotic_arm_results.pdf)
+*Comprehensive analysis of control methods on robotic arm system with adversarial attacks. The 2×2 subplot shows state evolution, control inputs, instantaneous costs, and confidence parameters.*
+
+### 3. Linear System Attack Analysis (`run_one_simulation.py`)
+![Linear System Attack Analysis](perturbation_attack_results.png)
+*Detailed analysis of control methods under adversarial attacks on linear systems. The 3-panel figure shows disturbance prediction errors, controller performance, and confidence learning during attack phases.*
 
 ## Key Results
 
