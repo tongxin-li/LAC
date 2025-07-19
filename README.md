@@ -1,4 +1,4 @@
-# Learning Adaptive Control (LAC) 
+# Learning-Augmented Control (LAC) 
 
 This repository contains a comprehensive simulation framework for evaluating Learning Adaptive Control (LAC) against traditional control methods under various system conditions and adversarial attacks.
 
