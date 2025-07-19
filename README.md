@@ -1,4 +1,4 @@
-# Learning Adaptive Control (LAC) - Simulation Framework
+# Learning Adaptive Control (LAC) 
 
 This repository contains a comprehensive simulation framework for evaluating Learning Adaptive Control (LAC) against traditional control methods under various system conditions and adversarial attacks.
 
@@ -198,26 +198,15 @@ LAC/
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{lac2024,
-  title={Learning Adaptive Control: A Framework for Robust Control Under Uncertainty},
-  author={Your Name},
-  journal={Journal Name},
-  year={2024}
+@article{lac2025,
+  title={Learning-Augmented Control: Adaptively
+Confidence Learning for Competitive MPC},
+  author={Tongxin Li},
+  year={2025}
 }
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contact
-
-For questions or issues, please open an issue on GitHub or contact [your-email@domain.com]. 
