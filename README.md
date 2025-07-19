@@ -1,11 +1,11 @@
-# Learning Adaptive Control (LAC) 
+# Learning-Augmented Control (LAC) 
 
-This repository contains a comprehensive simulation framework for evaluating Learning Adaptive Control (LAC) against traditional control methods under various system conditions and adversarial attacks.
+This repository contains a comprehensive simulation framework for evaluating Learning-Augmented Control (LAC) against traditional control methods under various system conditions and adversarial attacks.
 
 ## Overview
 
 The project implements and compares four control methods:
-- **LAC (Learning Adaptive Control)**: Our proposed adaptive control method that learns confidence parameters
+- **LAC (Learning-Augmented Control)**: Our proposed adaptive control method that learns confidence parameters with untrusted predictions
 - **MPC (Model Predictive Control)**: Traditional MPC with predictions
 - **LQR (Linear Quadratic Regulator)**: Nominal LQR control
 - **Self-Tuning**: Adaptive control with self-tuning parameters
@@ -72,7 +72,7 @@ python run_one_simulation.py
 
 ### Control Methods
 
-#### LAC (Learning Adaptive Control)
+#### LAC (Learning-Augmented Control)
 - **Algorithm**: Delayed Confidence Learning (DCL)
 - **Key Feature**: Dynamically adjusts confidence parameter λₜ ∈ [0,1]
 - **Update Rule**: λₜ = λₜ₋ₖ - η∇ξₜ₋ₖ(λ)
