@@ -30,12 +30,18 @@ def self_tuning_ftl(N, t, phi_true_past, phi_pred_past, P, F, H, eta_true_past, 
     - phi_pred_past: Array of predictions phi_{t - 1 | t - tau} for tau = 1 to k
                      Shape: same as phi_true_past
     """
+
+    if SYSTEM_TYPE == 'robotic_arm':
+        phi_true_past = np.array([[phi_true_past]])
+        # phi_pred_past = np.array([phi_pred_past])
+
+
     if t < 1:
         return 0.5, [], []
     if t == 1:
-        # t - 1 = 0
-        eta_true_past.append(np.linalg.matrix_power(F.T, 0) @ P @ phi_true_past)
-        eta_pred_past.append(np.linalg.matrix_power(F.T, 0) @ P @ phi_pred_past[0])
+            eta_true_past.append(np.linalg.matrix_power(F.T, 0) @ P @ phi_true_past)
+            eta_pred_past.append(np.linalg.matrix_power(F.T, 0) @ P @ phi_pred_past[0])
+
     else:
         for i in range(len(eta_true_past)):
             eta_true_past[i] += np.linalg.matrix_power(F.T, t - i - 1) @ P @ phi_true_past

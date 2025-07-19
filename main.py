@@ -4,53 +4,23 @@ from generate_phi import *
 import math
 from self_tuning import *
 from _PARAMETERS import *
+from dynamics import *
 
 # Common parameters
-learning_rate = 0.01  # Learning rate
-u_max = 5.0  # Control bound
+learning_rate = 0.05 # Learning rate
+if SYSTEM_TYPE == 'robotic_arm':
+    u_max = 1000.0
+else:
+    u_max = 10.0  # Control bound
 T = 200
-N = 5  # Prediction horizon
-k = 5  # Delay for DCL
 
-
-# Dynamics functions
-def chaotic_map_dynamics(x, u, phi):
-    """Dynamics for a chaotic map system."""
-    a = 3.8
-    b = 0.1
-    return a * x * (1 - x) + b * u + phi * np.sin(x)
-
-
-def robotic_arm_dynamics(x, u, phi):
-    """Robotic arm angle dynamics."""
-    alpha = 0.5
-    beta = 0.2
-    return x + alpha * np.sin(x) + beta * u * np.exp(-np.abs(x)) + phi * x**3
-
-
-# Cost functions
-def chaotic_map_cost(x, u):
-    """Cost for chaotic map."""
-    mu = 0.1
-    x_star = (a - 1) / a  # Fixed point ~ 0.7368
-    return (x - x_star)**2 + mu * u**2
-
-
-def robotic_arm_cost(x, u):
-    """Cost for robotic arm: penalize deviation and torque."""
-
-    gamma = 0.1
-    return x**2 + gamma * u**2
-
-
-def linear_dynamics(x, u, phi):
-    """Linear dynamics."""
-    return A @ x + B @ u + phi
-
-
-def quadratic_cost(x, u):
-    """Cost for robotic arm: penalize deviation and torque."""
-    return x.T @ Q @ x + u.T @ R @ u
+if SYSTEM_TYPE == 'robotic_arm':
+    N = 5  # Prediction horizon
+    k = 5 
+else:
+    N = 5  # Prediction horizon
+    k = 5 
+ # Delay for DCL
 
 
 def sample_on_sphere(noise_mu, sigma, k):
@@ -75,44 +45,15 @@ def sample_on_sphere(noise_mu, sigma, k):
     return Y
 
 
-# MPC solver
-# def mpc_solve(x_t, phi_seq, N, system_type):
-#     """Solve MPC optimization for the given system type."""
-#     def cost(U):
-#         x = x_t
-#         total_cost = 0
-#         for k in range(N):
-#             u = U[k]
-#             # total_cost += (x - x_star) ** 2 + mu * u ** 2
-#             # x = dynamics(x, u, phi_seq[k])
-#             if system_type == 'chaotic_map':
-#                 total_cost += chaotic_map_cost(x, u)
-#                 x = chaotic_map_dynamics(x, u, phi_seq[k])
-#             elif system_type == 'robotic_arm':
-#                 total_cost += robotic_arm_cost(x, u)
-#                 x = robotic_arm_dynamics(x, u, phi_seq[k])
-#         return total_cost
-#
-#     bounds = [(-u_max, u_max)] * N
-#     U0 = np.zeros(N)  # Initial guess
-#     res = minimize(cost, U0, bounds=bounds, method='trust-constr')
-#     return res.x[0]  # First control action
-
-
 def mpc_solve(x_t, phi_seq, N, system_type):
     def cost(U):
         x = x_t
         __total_cost = 0
         for k in range(N):
             u = U[k]
-            if system_type == 'chaotic_map':
-                __total_cost += chaotic_map_cost(x, u) / N  # Scaled cost
-                x = np.clip(chaotic_map_dynamics(x, u, phi_seq[k]), -10, 10)
-                # print("x is:" + str(x))
-                # print("u is:" + str(u))
-            elif system_type == 'robotic_arm':
+            if system_type == 'robotic_arm':
                 __total_cost += robotic_arm_cost(x, u) / N
-                x = np.clip(robotic_arm_dynamics(x, u, phi_seq[k]), -10 * np.pi, 10 * np.pi)
+                x = np.clip(robotic_arm_dynamics(x, u, phi_seq[k]), -100, 100)
         return __total_cost
 
 
@@ -131,7 +72,7 @@ def mpc_solve(x_t, phi_seq, N, system_type):
     # Define control dimension based on system type
     if system_type == 'linear':
         m = 2  # u in R^2 for linear system
-    else:
+    elif system_type == 'robotic_arm':
         m = 1  # Scalar u for other systems
 
     # Set bounds for each component of U (N * m elements)
@@ -140,9 +81,27 @@ def mpc_solve(x_t, phi_seq, N, system_type):
     # Initial guess: zeros with length N * m
     U0 = np.zeros(N * m)
 
+    # Define constraints for the optimizer
+    constraints = []
+
+    if system_type == 'robotic_arm':
+        def state_constraint(U):
+            # U is a flat array of length N
+            x = x_t
+            cons = []
+            for k in range(N):
+                u = U[k]
+                x = robotic_arm_dynamics(x, u, phi_seq[k])
+                cons.append(x - 0.2)   # x <= 2 --> x - 2 <= 0
+                cons.append(-x - 0.2)  # x >= -2 --> -x - 2 <= 0
+            return np.array(cons)
+        constraints = [{'type': 'ineq', 'fun': state_constraint}]
+
     # Optimize using SLSQP
     if system_type == 'linear':
         res = minimize(LQR_cost, U0, bounds=bounds, method='SLSQP')
+    elif system_type == 'robotic_arm':
+        res = minimize(cost, U0, bounds=bounds, constraints=constraints, method='SLSQP')
     else:
         res = minimize(cost, U0, bounds=bounds, method='SLSQP')
 
@@ -174,21 +133,28 @@ def dcl(phi_true_past, phi_pred_past, kappa_past, lambda_prev, learning_rate):
     - lambda_new: Updated lambda_t, constrained to [0, 1]
     """
     # Compute prediction errors
-    if len(phi_true_past) == 1:  # Scalar case
-        eps = np.abs(phi_pred_past - phi_true_past)  # ε_{τ|t} = |phi_star - phi_pred|
-        eps_bar = np.abs(kappa_past - phi_true_past)  # ε̅_{τ|t} = |phi_star - kappa|
-    else:  # Vector case
-        eps = np.linalg.norm(phi_pred_past - phi_true_past)  # Euclidean norm
-        eps_bar = np.linalg.norm(kappa_past - phi_true_past)  # Euclidean norm
+    # if len(phi_true_past) == 1:  # Scalar case
+    eps = phi_pred_past - phi_true_past  # ε_{τ|t} = |phi_star - phi_pred|
+    eps_bar = kappa_past - phi_true_past  # ε̅_{τ|t} = |phi_star - kappa|
+
+    # else:  # Vector case
+    #     eps = np.linalg.norm(phi_pred_past - phi_true_past)  # Euclidean norm
+    #     eps_bar = np.linalg.norm(kappa_past - phi_true_past)  # Euclidean norm
 
     # Compute gradient of the loss function ξ_{t - k}(λ)
     # ξ = Σ [λ² ε² + (1 - λ)² ε̅²]
     # ∂ξ/∂λ = Σ [2λ ε² - 2(1 - λ) ε̅²]
-    grad = np.sum(2 * lambda_prev * eps ** 2 - 2 * (1 - lambda_prev) * eps_bar ** 2)
-    # grad = np.sum(eps - eps_bar)
+    grad = np.sum(2 * lambda_prev * np.linalg.norm(eps) ** 2 - 2 * (1 - lambda_prev) * np.linalg.norm(eps_bar) ** 2)
+
+    # grad = 0
+    # for tau in range(len(eps)):
+    #     grad += (lambda_prev * eps[tau] + (1-lambda_prev) * eps_bar[tau]).T @ (eps[tau] - eps_bar[tau])
+
+        # grad_l2 = np.sum(eps - eps_bar)
+        # grad += (rho ** (2 * tau)) * (lambda_prev * eps[tau] + (1-lambda_prev) * eps_bar[tau]).T @ (eps[tau] - eps_bar[tau])
 
     # Update lambda using gradient descent
-    lambda_new = lambda_prev - learning_rate * grad
+    lambda_new = lambda_prev - learning_rate * np.clip(grad, -100, 100)
 
     # Project lambda onto [0, 1]
     return np.clip(lambda_new, 0, 1)
@@ -218,7 +184,7 @@ def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
 
         # Histories for DCL
         lambda_values = [0.5] * k  # Initialize lambda for t < k
-        np.random.seed(num)  # For reproducibility
+        np.random.seed(num+6)  # For reproducibility
 
         # Histories for STC
 
@@ -234,15 +200,41 @@ def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
 
         for t in range(T):
 
-            print("time is " + str(t))
+            # print("time is " + str(t))
 
             # Generate predictions with noise
             phi_pred = []
-            for i in range(phi_true_history.shape[1]):
-                phi_pred.append(phi_true_history[t: t+k][:, i] + sample_on_sphere(noise_mu, sigma, k))
 
-            if SYSTEM_TYPE == 'linear':
-                phi_pred = np.array(phi_pred).T
+            if with_attacks is True and SYSTEM_TYPE == 'linear':
+                attack_time = T // 3
+                terminal_time = 2 * (T // 3) 
+                attack_interval = 5
+                if t < attack_time:
+                    for i in range(phi_true_history.shape[1]):
+                        phi_pred.append(phi_true_history[t: t+k][:, i])
+                elif t % attack_interval <= 1 and t < terminal_time:
+                    for i in range(phi_true_history.shape[1]):
+                        phi_pred.append(phi_true_history[t: t+k][:, i] + sample_on_sphere(4, 0.5, k))
+                else:
+                    for i in range(phi_true_history.shape[1]):
+                        phi_pred.append(phi_true_history[t: t+k][:, i])
+            elif SYSTEM_TYPE == 'linear':
+                for i in range(phi_true_history.shape[1]):
+                    phi_pred.append(phi_true_history[t: t+k][:, i] + sample_on_sphere(noise_mu, sigma, k))
+            elif with_attacks is True and SYSTEM_TYPE == 'robotic_arm':
+                attack_time = T // 3
+                terminal_time = 2 * (T // 3) 
+                attack_interval = 5
+                if t < attack_time:
+                    phi_pred.append(phi_true_history[t: t+k])
+                elif t % attack_interval <= 1 and t < terminal_time:
+                    phi_pred.append(phi_true_history[t: t+k] + sample_on_sphere(4, 0.5, k))
+                else:
+                    phi_pred.append(phi_true_history[t: t+k])
+
+
+            # if SYSTEM_TYPE == 'linear':
+            phi_pred = np.array(phi_pred).T
 
             phi_pred_history.append(phi_pred)
 
@@ -250,7 +242,7 @@ def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
 
             if SYSTEM_TYPE == 'linear':
                 kappa = np.zeros((N, 4))
-            else:
+            elif SYSTEM_TYPE == 'robotic_arm':
                 kappa = np.zeros(N)
 
             # MPC solutions
@@ -278,7 +270,7 @@ def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
                 lambda_values.append(lambda_t)
                 lambda_history.append(lambda_t)
 
-            elif METHOD_TYPE == 'self-tuning' and SYSTEM_TYPE == 'linear':
+            elif METHOD_TYPE == 'self-tuning':
                 phi_true_past = np.array(phi_true_history[t])
                 phi_pred_past = []
                 if t > 0:
@@ -297,15 +289,14 @@ def run_dynamics(noise_mu, sigma, SYSTEM_TYPE, METHOD_TYPE, number_tests):
             u_history.append(u_t)
 
             # Update state
-            if SYSTEM_TYPE == 'chaotic_map':
-                x_t = chaotic_map_dynamics(x_t, u_t, phi_true_history[t])
-                total_cost += chaotic_map_cost(x_t, u_t)  # Scaled cost
-            elif SYSTEM_TYPE == 'robotic_arm':
+
+            if SYSTEM_TYPE == 'robotic_arm':
                 x_t = robotic_arm_dynamics(x_t, u_t, phi_true_history[t])
-                total_cost += robotic_arm_cost(x_t, u_t)  # Scaled cost
+                total_cost += robotic_arm_cost(x_t, u_t) / N  # Scaled cost
             elif SYSTEM_TYPE == 'linear':
                 x_t = linear_dynamics(x_t, u_t, phi_true_history[t])
                 total_cost += quadratic_cost(x_t, u_t) / N # Scaled cost
+
             x_history.append(x_t)
 
         all_total_cost.append(total_cost)
